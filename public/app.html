@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Portal</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <div class="header">
+          <div>
+            <h1>File Upload &amp; Download</h1>
+            <p>Upload new files and download previous uploads securely.</p>
+          </div>
+          <form method="POST" action="/logout">
+            <button class="secondary" type="submit">Log out</button>
+          </form>
+        </div>
+        <div class="grid" style="margin-top: 24px;">
+          <div>
+            <h2>Upload a file</h2>
+            <form method="POST" action="/upload" enctype="multipart/form-data">
+              <label for="file">Choose file</label>
+              <input id="file" name="file" type="file" required />
+              <button type="submit">Upload</button>
+            </form>
+          </div>
+          <div>
+            <h2>Recent uploads</h2>
+            <div class="notice">Only authenticated users can see and download these files.</div>
+            <table class="table" aria-live="polite" style="margin-top: 12px;">
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Size</th>
+                  <th>Uploaded</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="files-body">
+                <tr>
+                  <td colspan="4">Loading files...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const formatSize = (bytes) => {
+        if (bytes === 0) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+      };
+
+      const formatDate = (value) => {
+        const date = new Date(value);
+        return date.toLocaleString();
+      };
+
+      const loadFiles = async () => {
+        const tbody = document.getElementById("files-body");
+        try {
+          const response = await fetch("/api/files");
+          const files = await response.json();
+          if (!response.ok) {
+            throw new Error(files.error || "Failed to load files");
+          }
+          if (files.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4">No files uploaded yet.</td></tr>`;
+            return;
+          }
+          tbody.innerHTML = files
+            .map(
+              (file) => `
+              <tr>
+                <td>
+                  <div>${file.original_name}</div>
+                  <span class="badge">${file.uploaded_by}</span>
+                </td>
+                <td>${formatSize(file.size)}</td>
+                <td>${formatDate(file.uploaded_at)}</td>
+                <td><a href="/download/${file.id}">Download</a></td>
+              </tr>
+            `
+            )
+            .join("");
+        } catch (error) {
+          tbody.innerHTML = `<tr><td colspan="4">${error.message}</td></tr>`;
+        }
+      };
+
+      loadFiles();
+    </script>
+  </body>
+</html>
